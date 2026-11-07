@@ -18,14 +18,65 @@ npm start
 
 El servidor queda disponible en `http://localhost:3000`. Se puede cambiar el puerto con la variable de entorno `PORT`.
 
+Para los tests E2E, la API se levanta en modo test con `npm run start:test` (ver "Modo test para los E2E").
+
 ## Endpoints
 
 ### Productos
 
 - `GET /productos`: lista los 20 productos del catálogo.
-- `GET /productos/:id`: devuelve un producto o responde `404`.
+- `GET /productos/:id`: devuelve un producto o responde `404` con `{ "error": "..." }`.
 
-Los productos usan ids numéricos del 1 al 20.
+Cada producto trae su `precio` final, ya calculado por la API, y un `tipo` (`expreso`, `filtrado` o `pasteleria`) para distinguirlos sin leer el nombre. Los cafés agregan `tamanio` y `variedad` con su descripción.
+
+Café:
+
+```json
+{
+  "id": 9,
+  "tipo": "expreso",
+  "nombre": "Expreso",
+  "precio": 7360,
+  "tamanio": "Mediano",
+  "variedad": {
+    "nombre": "Colombia",
+    "descripcion": "Acidez media, cuerpo equilibrado y notas cítricas y florales"
+  }
+}
+```
+
+Pastelería:
+
+```json
+{ "id": 19, "tipo": "pasteleria", "nombre": "Muffin de chocolate", "precio": 2500 }
+```
+
+Ids del catálogo:
+
+| id | Tipo | Tamaño | Variedad | Precio |
+|---|---|---|---|---|
+| 1 | expreso | Pocillo | Brasil | 5020 |
+| 2 | filtrado | Pocillo | Brasil | 4040 |
+| 3 | expreso | Pocillo | Colombia | 5740 |
+| 4 | filtrado | Pocillo | Colombia | 4280 |
+| 5 | expreso | Pocillo | Etiopía | 6820 |
+| 6 | filtrado | Pocillo | Etiopía | 4640 |
+| 7 | expreso | Mediano | Brasil | 6280 |
+| 8 | filtrado | Mediano | Brasil | 5300 |
+| 9 | expreso | Mediano | Colombia | 7360 |
+| 10 | filtrado | Mediano | Colombia | 5900 |
+| 11 | expreso | Mediano | Etiopía | 8980 |
+| 12 | filtrado | Mediano | Etiopía | 6800 |
+| 13 | expreso | Taza grande | Brasil | 7540 |
+| 14 | filtrado | Taza grande | Brasil | 6700 |
+| 15 | expreso | Taza grande | Colombia | 8980 |
+| 16 | filtrado | Taza grande | Colombia | 7700 |
+| 17 | expreso | Taza grande | Etiopía | 11140 |
+| 18 | filtrado | Taza grande | Etiopía | 9200 |
+| 19 | pasteleria | | Muffin de chocolate | 2500 |
+| 20 | pasteleria | | Torta selva negra | 4200 |
+
+Los ids difieren del ejemplo del enunciado (ahí el Expreso Mediano Colombia es el 5); los precios coinciden. El front busca cada café por `tipo`, `tamanio` y `variedad.nombre`, nunca por id.
 
 ### Pedidos
 
@@ -33,18 +84,38 @@ Los productos usan ids numéricos del 1 al 20.
 - `GET /pedidos`: lista todos los pedidos.
 - `GET /pedidos/:id`: devuelve un pedido o responde `404`.
 
-Ejemplo de creación:
+Cuerpo de `POST /pedidos` para la mesa 4, con dos Expreso Mediano Colombia y un Muffin:
 
 ```json
 {
+  "mesaId": 4,
   "items": [
-    { "productoId": 1, "cantidad": 2 },
-    { "productoId": 19, "cantidad": 3 }
+    { "productoId": 9, "cantidad": 2 },
+    { "productoId": 19, "cantidad": 1 }
   ]
 }
 ```
 
-Cada pedido se devuelve con su `id`, `estado`, `items` y `total` calculado. Los items deben tener un `productoId` existente y una `cantidad` entera positiva; de lo contrario la API responde `400`.
+Respuesta `201` (la misma forma devuelven `GET /pedidos` y `GET /pedidos/:id`):
+
+```json
+{
+  "id": 1,
+  "mesaId": 4,
+  "estado": "pendiente",
+  "items": [
+    { "productoId": 9, "cantidad": 2 },
+    { "productoId": 19, "cantidad": 1 }
+  ],
+  "total": 17220
+}
+```
+
+Reglas:
+
+- `mesaId` es opcional. Las mesas válidas van de 1 a 12. Sin `mesaId`, o con `null`, el pedido es para retirar en la barra y se devuelve `"mesaId": null`.
+- Cada item necesita un `productoId` existente y una `cantidad` entera positiva.
+- El `total` lo calcula la API a partir de los precios del catálogo; el front no lo recalcula.
 
 ### Reportes
 
@@ -55,11 +126,32 @@ El conteo de ventas se agrupa por el nombre del producto. Los cafés se agrupan 
 
 ## Manejo de errores
 
-Los errores se procesan en un middleware centralizado:
+Todas las respuestas de error tienen el mismo formato, y el front muestra el mensaje tal cual:
 
-- `400`: datos de entrada o JSON inválidos.
-- `404`: recurso o ruta inexistente.
-- `500`: error inesperado, sin exponer detalles internos.
+```json
+{ "error": "Mesa inexistente: 99" }
+```
+
+| Código | Cuándo | Ejemplo de mensaje |
+|---|---|---|
+| 400 | Items vacíos, producto inexistente, cantidad no entera, mesa fuera de 1 a 12 o JSON mal formado | `Producto inexistente en el catálogo: 999` |
+| 404 | Producto, pedido o ruta inexistente | `Pedido no encontrado: abc` |
+| 500 | Error inesperado, sin exponer detalles internos | `Error interno del servidor` |
+
+Una mesa o un producto inexistente nunca responde 500. Los errores se procesan en un middleware centralizado (`src/middlewares/errorHandler.ts`).
+
+## Modo test para los E2E
+
+```bash
+npm run start:test
+```
+
+Levanta la API con `NODE_ENV=test` (usa `cross-env`, así funciona igual en Windows, Mac y Linux). Solo en este modo existen dos rutas para que cada E2E arranque con los mismos datos:
+
+- `POST /__test__/reset`: borra todos los pedidos y reinicia los ids. Responde `204`.
+- `POST /__test__/seed`: deja solo el pedido de ejemplo (mesa 4, dos id 9 y un id 19, total 17220). Responde `201`.
+
+Fuera de `NODE_ENV=test`, las dos rutas responden `404`.
 
 ## Pruebas y TDD
 
@@ -67,7 +159,7 @@ Los tests unitarios prueban los modelos y servicios de forma aislada. Los tests 
 
 `pedidoService.reset()` se ejecuta en cada `beforeEach` de las pruebas que almacenan pedidos para evitar contaminación entre casos y reiniciar los ids.
 
-El historial conserva el ciclo TDD de esta etapa: primero el commit con los tests fallando y después el commit con el código mínimo que deja toda la suite en verde.
+El historial conserva el ciclo TDD completo: un commit `test:` con el test en rojo, un commit `feat:` con el código mínimo que lo pone en verde y, cuando hace falta, un commit `refactor:` que mejora el código sin cambiar el comportamiento (la suite sigue pasando igual). Los tests de `tests/integration/errores.test.ts` son de caracterización: documentan el formato de errores que la API ya cumplía, por eso no tienen un commit en rojo.
 
 ## Demo
 

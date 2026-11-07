@@ -28,4 +28,10 @@ describe('App', () => {
 
     expect(screen.getByText('Retiro en barra')).toBeInTheDocument()
   })
+
+  it('carga el menú desde la API', async () => {
+    render(<App />)
+
+    expect(await screen.findByText('Muffin de chocolate')).toBeInTheDocument()
+  })
 })

@@ -1,4 +1,5 @@
 import { Encabezado } from './components/Encabezado'
+import { Menu } from './components/Menu'
 import { leerMesa } from './domain/leerMesa'
 
 function App() {
@@ -7,6 +8,7 @@ function App() {
   return (
     <main className="container py-4">
       <Encabezado mesa={mesa} />
+      <Menu />
     </main>
   )
 }

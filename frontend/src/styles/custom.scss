@@ -1,0 +1,15 @@
+// 1) Colores de Cafetería Origen (sobrescriben los de Bootstrap)
+$cafe-oscuro: #3e2723;
+$cafe: #6f4e37;
+$crema: #f5ebe0;
+$caramelo: #c8a27a;
+
+$primary: $cafe;
+$secondary: $caramelo;
+$dark: $cafe-oscuro;
+$light: $crema;
+$body-bg: $crema;
+$body-color: $cafe-oscuro;
+
+// 2) Recién ahora se importa Bootstrap, que usa las variables de arriba
+@import 'bootstrap/scss/bootstrap';

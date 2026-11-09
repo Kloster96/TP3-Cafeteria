@@ -221,3 +221,27 @@ describe('Reintento tras un error del servidor', () => {
     expect(screen.getByText('Tu carrito está vacío')).toBeInTheDocument()
   })
 })
+
+describe('API caída al confirmar', () => {
+  afterEach(() => {
+    window.history.pushState({}, '', '/')
+  })
+
+  it('avisa que no hay conexión y conserva el carrito', async () => {
+    server.use(http.post('/api/pedidos', () => HttpResponse.error()))
+    window.history.pushState({}, '', '/?mesa=4')
+    const usuario = userEvent.setup()
+    renderApp()
+
+    await armarPedido(usuario)
+    await usuario.click(screen.getByRole('button', { name: 'Confirmar pedido' }))
+
+    expect(await screen.findByRole('alert')).toHaveTextContent(
+      'No se pudo conectar con la cafetería',
+    )
+    expect(screen.getByLabelText('Cantidad de Expreso')).toHaveTextContent('2')
+    expect(
+      screen.getByLabelText('Cantidad de Muffin de chocolate'),
+    ).toHaveTextContent('1')
+  })
+})

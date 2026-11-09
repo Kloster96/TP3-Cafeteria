@@ -273,3 +273,34 @@ describe('Respuesta inválida al confirmar', () => {
     ).toHaveTextContent('1')
   })
 })
+
+describe('Error al actualizar el estado', () => {
+  afterEach(() => {
+    window.history.pushState({}, '', '/')
+  })
+
+  it('muestra el error y mantiene el último estado conocido', async () => {
+    server.use(
+      http.get('/api/pedidos/:id', () =>
+        HttpResponse.json({ error: 'Error interno del servidor' }, { status: 500 }),
+      ),
+    )
+    window.history.pushState({}, '', '/?mesa=4')
+    const usuario = userEvent.setup()
+    renderApp()
+
+    await armarPedido(usuario)
+    await usuario.click(screen.getByRole('button', { name: 'Confirmar pedido' }))
+    await screen.findByText('Pedido #1')
+    await usuario.click(
+      screen.getByRole('button', { name: 'Actualizar estado' }),
+    )
+
+    expect(await screen.findByRole('alert')).toHaveTextContent(
+      'Error interno del servidor',
+    )
+    expect(screen.getByText('Pedido #1')).toBeInTheDocument()
+    expect(screen.getByText('pendiente')).toBeInTheDocument()
+    expect(screen.getByText('$17.220')).toBeInTheDocument()
+  })
+})

@@ -15,6 +15,8 @@ function App() {
   const [error, setError] = useState<string>()
 
   async function confirmarPedido() {
+    setError(undefined)
+
     try {
       const creado = await crearPedido({
         ...(mesa !== null && { mesaId: mesa }),

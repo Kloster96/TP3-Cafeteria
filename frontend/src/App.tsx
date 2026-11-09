@@ -15,7 +15,7 @@ function App() {
 
   async function confirmarPedido() {
     const creado = await crearPedido({
-      mesaId: mesa,
+      ...(mesa !== null && { mesaId: mesa }),
       items: estado.items.map(({ productoId, cantidad }) => ({
         productoId,
         cantidad,

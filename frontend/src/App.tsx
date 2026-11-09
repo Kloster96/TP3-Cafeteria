@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { crearPedido } from './api/client'
+import { ApiError, crearPedido } from './api/client'
 import type { Pedido } from './api/schemas'
 import { Carrito } from './components/Carrito'
 import { Confirmacion } from './components/Confirmacion'
@@ -12,18 +12,24 @@ function App() {
   const mesa = leerMesa(window.location.search)
   const { estado, dispatch } = useCarrito()
   const [pedido, setPedido] = useState<Pedido>()
+  const [error, setError] = useState<string>()
 
   async function confirmarPedido() {
-    const creado = await crearPedido({
-      ...(mesa !== null && { mesaId: mesa }),
-      items: estado.items.map(({ productoId, cantidad }) => ({
-        productoId,
-        cantidad,
-      })),
-    })
+    try {
+      const creado = await crearPedido({
+        ...(mesa !== null && { mesaId: mesa }),
+        items: estado.items.map(({ productoId, cantidad }) => ({
+          productoId,
+          cantidad,
+        })),
+      })
 
-    dispatch({ tipo: 'vaciar' })
-    setPedido(creado)
+      dispatch({ tipo: 'vaciar' })
+      setPedido(creado)
+    } catch (e) {
+      if (!(e instanceof ApiError)) throw e
+      setError(e.message)
+    }
   }
 
   return (
@@ -31,6 +37,11 @@ function App() {
       <Encabezado mesa={mesa} />
       <Menu />
       <Carrito onConfirmar={() => void confirmarPedido()} />
+      {error && (
+        <div role="alert" className="alert alert-danger mt-3">
+          {error}
+        </div>
+      )}
       {pedido && <Confirmacion pedido={pedido} />}
     </main>
   )

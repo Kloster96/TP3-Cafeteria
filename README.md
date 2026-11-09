@@ -4,21 +4,35 @@ API REST desarrollada con TypeScript y Express para administrar el catálogo, lo
 
 ## Requisitos
 
-- Node.js 22.12 o superior.
+- Node.js 22.12 o superior. Las pruebas de la API lo exigen; el front por sí solo también funciona con Node 20.19 o superior.
 - npm.
 
 ## Instalación y ejecución
 
+El proyecto tiene dos partes: la API, en la raíz del repositorio, y el front, en `frontend/`. Para usar la aplicación hay que levantar las dos, cada una en su terminal.
+
+### API
+
 ```bash
 npm ci
-npm test
-npm run typecheck
 npm start
 ```
 
 El servidor queda disponible en `http://localhost:3000`. Se puede cambiar el puerto con la variable de entorno `PORT`.
 
 Para los tests E2E, la API se levanta en modo test con `npm run start:test` (ver "Modo test para los E2E").
+
+### Front
+
+```bash
+cd frontend
+npm ci
+npm run dev
+```
+
+La aplicación queda en `http://localhost:5173`. La mesa se toma del parámetro `mesa` de la URL, como llega desde el QR de cada mesa: `http://localhost:5173/?mesa=4`. Sin ese parámetro, el pedido es para retirar en la barra.
+
+El front llama a la API a través de `/api`. En desarrollo, Vite redirige esas llamadas a `http://localhost:3000`, por lo que la API tiene que estar corriendo.
 
 ## Endpoints
 
@@ -140,6 +154,16 @@ Todas las respuestas de error tienen el mismo formato, y el front muestra el men
 
 Una mesa o un producto inexistente nunca responde 500. Los errores se procesan en un middleware centralizado (`src/middlewares/errorHandler.ts`).
 
+## Contrato que usa el front
+
+El front usa tres endpoints, descritos en "Endpoints" y "Manejo de errores":
+
+- `GET /productos` para armar el menú.
+- `POST /pedidos` para confirmar el pedido, con `mesaId` solo cuando hay mesa.
+- `GET /pedidos/:id` para consultar el estado de un pedido ya confirmado.
+
+Todas las respuestas se validan con esquemas de Zod en `frontend/src/api/schemas.ts`, y los tipos del front salen de esos esquemas. El único módulo que hace llamadas HTTP es `frontend/src/api/client.ts`; los componentes nunca llaman a `fetch`. Si la API responde con un error, el cliente lanza un `ApiError` con el mensaje del campo `error`. Si la API no responde o devuelve algo que no cumple el contrato, el mensaje es "No se pudo conectar con la cafetería" o "Respuesta inválida de la API".
+
 ## Modo test para los E2E
 
 ```bash
@@ -153,6 +177,38 @@ Levanta la API con `NODE_ENV=test` (usa `cross-env`, así funciona igual en Wind
 
 Fuera de `NODE_ENV=test`, las dos rutas responden `404`.
 
+## Cómo correr los tests
+
+Pruebas de la API, desde la raíz:
+
+```bash
+npm test
+npm run typecheck
+```
+
+Pruebas del front, desde `frontend/`. Usan MSW para simular la API, por lo que no necesitan que esté levantada:
+
+```bash
+cd frontend
+npm test
+npm run typecheck
+npm run lint
+```
+
+Pruebas E2E, desde `frontend/`. La primera vez hay que instalar el navegador:
+
+```bash
+npx playwright install chromium
+```
+
+Después alcanza con:
+
+```bash
+npm run test:e2e
+```
+
+Playwright levanta solo la API con `npm run start:test` y el front con `npm run dev`. Si ya están corriendo en los puertos 3000 y 5173, los reutiliza. Los tests viven en `frontend/e2e/`: `pedido.spec.ts` recorre el pedido completo con la API real y `mobile.spec.ts` comprueba que no haya scroll horizontal en 375 px. El comando `npm test` del front no los ejecuta.
+
 ## Pruebas y TDD
 
 Los tests unitarios prueban los modelos y servicios de forma aislada. Los tests de integración usan Supertest sobre la aplicación de Express sin levantar un puerto.
@@ -160,6 +216,31 @@ Los tests unitarios prueban los modelos y servicios de forma aislada. Los tests 
 `pedidoService.reset()` se ejecuta en cada `beforeEach` de las pruebas que almacenan pedidos para evitar contaminación entre casos y reiniciar los ids.
 
 El historial conserva el ciclo TDD completo: un commit `test:` con el test en rojo, un commit `feat:` con el código mínimo que lo pone en verde y, cuando hace falta, un commit `refactor:` que mejora el código sin cambiar el comportamiento (la suite sigue pasando igual). Los tests de `tests/integration/errores.test.ts` son de caracterización: documentan el formato de errores que la API ya cumplía, por eso no tienen un commit en rojo.
+
+## Decisiones del grupo
+
+- **Proxy de Vite en lugar de CORS.** El front llama a `/api` y Vite reenvía esas llamadas a la API, por lo que esta no necesita configurar CORS.
+- **Mesas del 1 al 12.** La API rechaza cualquier otra mesa con un `400`. El front lee la mesa del parámetro `mesa` de la URL y trata un valor inválido como si no hubiera mesa.
+- **Retiro en barra.** Cuando no hay mesa, el front omite `mesaId` del pedido; la API lo guarda como `null`.
+- **Formato de error `{ "error": "mensaje" }`.** El front muestra ese mensaje tal cual en un aviso de error.
+- **Precios y totales de la API.** El front los muestra con `formatoPrecio` y no los calcula. El subtotal del carrito es solo orientativo.
+- **El carrito solo se vacía si el pedido se confirmó.** Si la API responde con un error o no está disponible, los ítems se conservan para poder reintentar.
+
+## Estructura del front
+
+```
+frontend/
+├── e2e/            Tests E2E con Playwright
+└── src/
+    ├── api/        Cliente HTTP único y esquemas de Zod
+    ├── components/ Componentes de React, cada uno con su test
+    ├── context/    Estado del carrito con useReducer
+    ├── domain/     Funciones puras: carrito, búsqueda de café, mesa y precios
+    ├── hooks/      Carga del menú
+    ├── mocks/      Datos de prueba y handlers de MSW
+    ├── styles/     Variables de color y Bootstrap
+    └── test/       Configuración de Vitest
+```
 
 ## Demo
 

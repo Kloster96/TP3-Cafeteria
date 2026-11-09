@@ -160,3 +160,32 @@ describe('Seguimiento del pedido', () => {
     expect(screen.getByText('Pedido #1')).toBeInTheDocument()
   })
 })
+
+describe('Errores al confirmar el pedido', () => {
+  afterEach(() => {
+    window.history.pushState({}, '', '/')
+  })
+
+  it('muestra el mensaje de la API y conserva el carrito ante un 400', async () => {
+    server.use(
+      http.post('/api/pedidos', () =>
+        HttpResponse.json({ error: 'Mesa inexistente: 99' }, { status: 400 }),
+      ),
+    )
+    window.history.pushState({}, '', '/?mesa=4')
+    const usuario = userEvent.setup()
+    renderApp()
+
+    await armarPedido(usuario)
+    await usuario.click(screen.getByRole('button', { name: 'Confirmar pedido' }))
+
+    expect(await screen.findByRole('alert')).toHaveTextContent(
+      'Mesa inexistente: 99',
+    )
+    expect(screen.queryByText('Tu carrito está vacío')).not.toBeInTheDocument()
+    expect(screen.getByLabelText('Cantidad de Expreso')).toHaveTextContent('2')
+    expect(
+      screen.getByLabelText('Cantidad de Muffin de chocolate'),
+    ).toHaveTextContent('1')
+  })
+})

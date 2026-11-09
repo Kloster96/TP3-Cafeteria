@@ -12,18 +12,25 @@ function App() {
   const mesa = leerMesa(window.location.search)
   const { estado, dispatch } = useCarrito()
   const [pedido, setPedido] = useState<Pedido>()
+  const [error, setError] = useState<string>()
 
   async function confirmarPedido() {
-    const creado = await crearPedido({
-      ...(mesa !== null && { mesaId: mesa }),
-      items: estado.items.map(({ productoId, cantidad }) => ({
-        productoId,
-        cantidad,
-      })),
-    })
+    setError(undefined)
 
-    dispatch({ tipo: 'vaciar' })
-    setPedido(creado)
+    try {
+      const creado = await crearPedido({
+        ...(mesa !== null && { mesaId: mesa }),
+        items: estado.items.map(({ productoId, cantidad }) => ({
+          productoId,
+          cantidad,
+        })),
+      })
+
+      dispatch({ tipo: 'vaciar' })
+      setPedido(creado)
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Error inesperado')
+    }
   }
 
   return (
@@ -31,6 +38,11 @@ function App() {
       <Encabezado mesa={mesa} />
       <Menu />
       <Carrito onConfirmar={() => void confirmarPedido()} />
+      {error && (
+        <div role="alert" className="alert alert-danger mt-3">
+          {error}
+        </div>
+      )}
       {pedido && <Confirmacion pedido={pedido} />}
     </main>
   )

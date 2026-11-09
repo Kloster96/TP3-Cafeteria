@@ -160,3 +160,147 @@ describe('Seguimiento del pedido', () => {
     expect(screen.getByText('Pedido #1')).toBeInTheDocument()
   })
 })
+
+describe('Errores al confirmar el pedido', () => {
+  afterEach(() => {
+    window.history.pushState({}, '', '/')
+  })
+
+  it('muestra el mensaje de la API y conserva el carrito ante un 400', async () => {
+    server.use(
+      http.post('/api/pedidos', () =>
+        HttpResponse.json({ error: 'Mesa inexistente: 99' }, { status: 400 }),
+      ),
+    )
+    window.history.pushState({}, '', '/?mesa=4')
+    const usuario = userEvent.setup()
+    renderApp()
+
+    await armarPedido(usuario)
+    await usuario.click(screen.getByRole('button', { name: 'Confirmar pedido' }))
+
+    expect(await screen.findByRole('alert')).toHaveTextContent(
+      'Mesa inexistente: 99',
+    )
+    expect(screen.queryByText('Tu carrito está vacío')).not.toBeInTheDocument()
+    expect(screen.getByLabelText('Cantidad de Expreso')).toHaveTextContent('2')
+    expect(
+      screen.getByLabelText('Cantidad de Muffin de chocolate'),
+    ).toHaveTextContent('1')
+  })
+})
+
+describe('Reintento tras un error del servidor', () => {
+  afterEach(() => {
+    window.history.pushState({}, '', '/')
+  })
+
+  it('permite reintentar tras un 500 y confirma el pedido', async () => {
+    server.use(
+      http.post('/api/pedidos', () =>
+        HttpResponse.json({ error: 'Error interno del servidor' }, { status: 500 }),
+        { once: true },
+      ),
+    )
+    window.history.pushState({}, '', '/?mesa=4')
+    const usuario = userEvent.setup()
+    renderApp()
+
+    await armarPedido(usuario)
+    await usuario.click(screen.getByRole('button', { name: 'Confirmar pedido' }))
+
+    expect(await screen.findByRole('alert')).toHaveTextContent(
+      'Error interno del servidor',
+    )
+    expect(screen.getByLabelText('Cantidad de Expreso')).toHaveTextContent('2')
+
+    await usuario.click(screen.getByRole('button', { name: 'Confirmar pedido' }))
+
+    expect(await screen.findByText('Pedido #1')).toBeInTheDocument()
+    expect(screen.queryByRole('alert')).not.toBeInTheDocument()
+    expect(screen.getByText('Tu carrito está vacío')).toBeInTheDocument()
+  })
+})
+
+describe('API caída al confirmar', () => {
+  afterEach(() => {
+    window.history.pushState({}, '', '/')
+  })
+
+  it('avisa que no hay conexión y conserva el carrito', async () => {
+    server.use(http.post('/api/pedidos', () => HttpResponse.error()))
+    window.history.pushState({}, '', '/?mesa=4')
+    const usuario = userEvent.setup()
+    renderApp()
+
+    await armarPedido(usuario)
+    await usuario.click(screen.getByRole('button', { name: 'Confirmar pedido' }))
+
+    expect(await screen.findByRole('alert')).toHaveTextContent(
+      'No se pudo conectar con la cafetería',
+    )
+    expect(screen.getByLabelText('Cantidad de Expreso')).toHaveTextContent('2')
+    expect(
+      screen.getByLabelText('Cantidad de Muffin de chocolate'),
+    ).toHaveTextContent('1')
+  })
+})
+
+describe('Respuesta inválida al confirmar', () => {
+  afterEach(() => {
+    window.history.pushState({}, '', '/')
+  })
+
+  it('muestra el error y conserva el carrito si la respuesta no cumple el contrato', async () => {
+    server.use(
+      http.post('/api/pedidos', () =>
+        HttpResponse.json({ id: 'uno' }, { status: 201 }),
+      ),
+    )
+    window.history.pushState({}, '', '/?mesa=4')
+    const usuario = userEvent.setup()
+    renderApp()
+
+    await armarPedido(usuario)
+    await usuario.click(screen.getByRole('button', { name: 'Confirmar pedido' }))
+
+    expect(await screen.findByRole('alert')).toHaveTextContent(
+      'Respuesta inválida de la API',
+    )
+    expect(screen.getByLabelText('Cantidad de Expreso')).toHaveTextContent('2')
+    expect(
+      screen.getByLabelText('Cantidad de Muffin de chocolate'),
+    ).toHaveTextContent('1')
+  })
+})
+
+describe('Error al actualizar el estado', () => {
+  afterEach(() => {
+    window.history.pushState({}, '', '/')
+  })
+
+  it('muestra el error y mantiene el último estado conocido', async () => {
+    server.use(
+      http.get('/api/pedidos/:id', () =>
+        HttpResponse.json({ error: 'Error interno del servidor' }, { status: 500 }),
+      ),
+    )
+    window.history.pushState({}, '', '/?mesa=4')
+    const usuario = userEvent.setup()
+    renderApp()
+
+    await armarPedido(usuario)
+    await usuario.click(screen.getByRole('button', { name: 'Confirmar pedido' }))
+    await screen.findByText('Pedido #1')
+    await usuario.click(
+      screen.getByRole('button', { name: 'Actualizar estado' }),
+    )
+
+    expect(await screen.findByRole('alert')).toHaveTextContent(
+      'Error interno del servidor',
+    )
+    expect(screen.getByText('Pedido #1')).toBeInTheDocument()
+    expect(screen.getByText('pendiente')).toBeInTheDocument()
+    expect(screen.getByText('$17.220')).toBeInTheDocument()
+  })
+})

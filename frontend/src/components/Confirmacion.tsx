@@ -9,9 +9,16 @@ interface ConfirmacionProps {
 
 export function Confirmacion({ pedido: pedidoInicial }: ConfirmacionProps) {
   const [pedido, setPedido] = useState(pedidoInicial)
+  const [error, setError] = useState<string>()
 
   async function actualizarEstado() {
-    setPedido(await getPedido(pedido.id))
+    setError(undefined)
+
+    try {
+      setPedido(await getPedido(pedido.id))
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Error inesperado')
+    }
   }
 
   return (
@@ -27,6 +34,11 @@ export function Confirmacion({ pedido: pedidoInicial }: ConfirmacionProps) {
         <p className="mb-3">
           Total: <span>{formatoPrecio(pedido.total)}</span>
         </p>
+        {error && (
+          <div role="alert" className="alert alert-danger">
+            {error}
+          </div>
+        )}
         <button
           type="button"
           className="btn btn-outline-primary"

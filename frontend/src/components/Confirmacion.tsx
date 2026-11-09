@@ -1,3 +1,4 @@
+import { useState } from 'react'
 import { getPedido } from '../api/client'
 import type { Pedido } from '../api/schemas'
 import { formatoPrecio } from '../domain/formatoPrecio'
@@ -6,7 +7,13 @@ interface ConfirmacionProps {
   pedido: Pedido
 }
 
-export function Confirmacion({ pedido }: ConfirmacionProps) {
+export function Confirmacion({ pedido: pedidoInicial }: ConfirmacionProps) {
+  const [pedido, setPedido] = useState(pedidoInicial)
+
+  async function actualizarEstado() {
+    setPedido(await getPedido(pedido.id))
+  }
+
   return (
     <section aria-labelledby="confirmacion-titulo" className="card mt-4">
       <div className="card-body">
@@ -23,7 +30,7 @@ export function Confirmacion({ pedido }: ConfirmacionProps) {
         <button
           type="button"
           className="btn btn-outline-primary"
-          onClick={() => void getPedido(pedido.id)}
+          onClick={() => void actualizarEstado()}
         >
           Actualizar estado
         </button>

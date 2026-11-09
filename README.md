@@ -4,21 +4,35 @@ API REST desarrollada con TypeScript y Express para administrar el catálogo, lo
 
 ## Requisitos
 
-- Node.js 22.12 o superior.
+- Node.js 22.12 o superior. Las pruebas de la API lo exigen; el front por sí solo también funciona con Node 20.19 o superior.
 - npm.
 
 ## Instalación y ejecución
 
+El proyecto tiene dos partes: la API, en la raíz del repositorio, y el front, en `frontend/`. Para usar la aplicación hay que levantar las dos, cada una en su terminal.
+
+### API
+
 ```bash
 npm ci
-npm test
-npm run typecheck
 npm start
 ```
 
 El servidor queda disponible en `http://localhost:3000`. Se puede cambiar el puerto con la variable de entorno `PORT`.
 
 Para los tests E2E, la API se levanta en modo test con `npm run start:test` (ver "Modo test para los E2E").
+
+### Front
+
+```bash
+cd frontend
+npm ci
+npm run dev
+```
+
+La aplicación queda en `http://localhost:5173`. La mesa se toma del parámetro `mesa` de la URL, como llega desde el QR de cada mesa: `http://localhost:5173/?mesa=4`. Sin ese parámetro, el pedido es para retirar en la barra.
+
+El front llama a la API a través de `/api`. En desarrollo, Vite redirige esas llamadas a `http://localhost:3000`, por lo que la API tiene que estar corriendo.
 
 ## Endpoints
 

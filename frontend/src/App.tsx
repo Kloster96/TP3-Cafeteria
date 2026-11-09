@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { ApiError, crearPedido } from './api/client'
+import { crearPedido } from './api/client'
 import type { Pedido } from './api/schemas'
 import { Carrito } from './components/Carrito'
 import { Confirmacion } from './components/Confirmacion'
@@ -29,8 +29,7 @@ function App() {
       dispatch({ tipo: 'vaciar' })
       setPedido(creado)
     } catch (e) {
-      if (!(e instanceof ApiError)) throw e
-      setError(e.message)
+      setError(e instanceof Error ? e.message : 'Error inesperado')
     }
   }
 

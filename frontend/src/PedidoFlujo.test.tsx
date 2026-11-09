@@ -67,4 +67,18 @@ describe('Flujo de confirmación del pedido', () => {
       }),
     )
   })
+
+  it('muestra el pedido confirmado y vacía el carrito', async () => {
+    window.history.pushState({}, '', '/?mesa=4')
+    const usuario = userEvent.setup()
+    renderApp()
+
+    await armarPedido(usuario)
+    await usuario.click(screen.getByRole('button', { name: 'Confirmar pedido' }))
+
+    expect(await screen.findByText('Pedido #1')).toBeInTheDocument()
+    expect(screen.getByText('pendiente')).toBeInTheDocument()
+    expect(screen.getByText('$17.220')).toBeInTheDocument()
+    expect(screen.getByText('Tu carrito está vacío')).toBeInTheDocument()
+  })
 })

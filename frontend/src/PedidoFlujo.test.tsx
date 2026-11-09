@@ -189,3 +189,35 @@ describe('Errores al confirmar el pedido', () => {
     ).toHaveTextContent('1')
   })
 })
+
+describe('Reintento tras un error del servidor', () => {
+  afterEach(() => {
+    window.history.pushState({}, '', '/')
+  })
+
+  it('permite reintentar tras un 500 y confirma el pedido', async () => {
+    server.use(
+      http.post('/api/pedidos', () =>
+        HttpResponse.json({ error: 'Error interno del servidor' }, { status: 500 }),
+        { once: true },
+      ),
+    )
+    window.history.pushState({}, '', '/?mesa=4')
+    const usuario = userEvent.setup()
+    renderApp()
+
+    await armarPedido(usuario)
+    await usuario.click(screen.getByRole('button', { name: 'Confirmar pedido' }))
+
+    expect(await screen.findByRole('alert')).toHaveTextContent(
+      'Error interno del servidor',
+    )
+    expect(screen.getByLabelText('Cantidad de Expreso')).toHaveTextContent('2')
+
+    await usuario.click(screen.getByRole('button', { name: 'Confirmar pedido' }))
+
+    expect(await screen.findByText('Pedido #1')).toBeInTheDocument()
+    expect(screen.queryByRole('alert')).not.toBeInTheDocument()
+    expect(screen.getByText('Tu carrito está vacío')).toBeInTheDocument()
+  })
+})

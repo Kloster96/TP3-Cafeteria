@@ -1,3 +1,4 @@
+import { getPedido } from '../api/client'
 import type { Pedido } from '../api/schemas'
 import { formatoPrecio } from '../domain/formatoPrecio'
 
@@ -16,9 +17,16 @@ export function Confirmacion({ pedido }: ConfirmacionProps) {
         <p className="mb-1">
           Estado: <span>{pedido.estado}</span>
         </p>
-        <p className="mb-0">
+        <p className="mb-3">
           Total: <span>{formatoPrecio(pedido.total)}</span>
         </p>
+        <button
+          type="button"
+          className="btn btn-outline-primary"
+          onClick={() => void getPedido(pedido.id)}
+        >
+          Actualizar estado
+        </button>
       </div>
     </section>
   )

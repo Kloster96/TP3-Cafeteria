@@ -217,6 +217,31 @@ Los tests unitarios prueban los modelos y servicios de forma aislada. Los tests 
 
 El historial conserva el ciclo TDD completo: un commit `test:` con el test en rojo, un commit `feat:` con el código mínimo que lo pone en verde y, cuando hace falta, un commit `refactor:` que mejora el código sin cambiar el comportamiento (la suite sigue pasando igual). Los tests de `tests/integration/errores.test.ts` son de caracterización: documentan el formato de errores que la API ya cumplía, por eso no tienen un commit en rojo.
 
+## Decisiones del grupo
+
+- **Proxy de Vite en lugar de CORS.** El front llama a `/api` y Vite reenvía esas llamadas a la API, por lo que esta no necesita configurar CORS.
+- **Mesas del 1 al 12.** La API rechaza cualquier otra mesa con un `400`. El front lee la mesa del parámetro `mesa` de la URL y trata un valor inválido como si no hubiera mesa.
+- **Retiro en barra.** Cuando no hay mesa, el front omite `mesaId` del pedido; la API lo guarda como `null`.
+- **Formato de error `{ "error": "mensaje" }`.** El front muestra ese mensaje tal cual en un aviso de error.
+- **Precios y totales de la API.** El front los muestra con `formatoPrecio` y no los calcula. El subtotal del carrito es solo orientativo.
+- **El carrito solo se vacía si el pedido se confirmó.** Si la API responde con un error o no está disponible, los ítems se conservan para poder reintentar.
+
+## Estructura del front
+
+```
+frontend/
+├── e2e/            Tests E2E con Playwright
+└── src/
+    ├── api/        Cliente HTTP único y esquemas de Zod
+    ├── components/ Componentes de React, cada uno con su test
+    ├── context/    Estado del carrito con useReducer
+    ├── domain/     Funciones puras: carrito, búsqueda de café, mesa y precios
+    ├── hooks/      Carga del menú
+    ├── mocks/      Datos de prueba y handlers de MSW
+    ├── styles/     Variables de color y Bootstrap
+    └── test/       Configuración de Vitest
+```
+
 ## Demo
 
 El archivo `requests.http` contiene un recorrido completo: listar productos, crear pedidos, consultarlos y obtener ambos reportes. Se puede ejecutar con un cliente compatible con archivos HTTP mientras el servidor está iniciado con `npm start`.

@@ -245,3 +245,31 @@ describe('API caída al confirmar', () => {
     ).toHaveTextContent('1')
   })
 })
+
+describe('Respuesta inválida al confirmar', () => {
+  afterEach(() => {
+    window.history.pushState({}, '', '/')
+  })
+
+  it('muestra el error y conserva el carrito si la respuesta no cumple el contrato', async () => {
+    server.use(
+      http.post('/api/pedidos', () =>
+        HttpResponse.json({ id: 'uno' }, { status: 201 }),
+      ),
+    )
+    window.history.pushState({}, '', '/?mesa=4')
+    const usuario = userEvent.setup()
+    renderApp()
+
+    await armarPedido(usuario)
+    await usuario.click(screen.getByRole('button', { name: 'Confirmar pedido' }))
+
+    expect(await screen.findByRole('alert')).toHaveTextContent(
+      'Respuesta inválida de la API',
+    )
+    expect(screen.getByLabelText('Cantidad de Expreso')).toHaveTextContent('2')
+    expect(
+      screen.getByLabelText('Cantidad de Muffin de chocolate'),
+    ).toHaveTextContent('1')
+  })
+})

@@ -136,4 +136,27 @@ describe('Seguimiento del pedido', () => {
 
     await waitFor(() => expect(idsConsultados).toEqual(['1']))
   })
+
+  it('muestra el estado que devuelve la API sin recargar la página', async () => {
+    server.use(
+      http.get('/api/pedidos/:id', () =>
+        HttpResponse.json({ ...pedidoCreado, estado: 'listo' }),
+      ),
+    )
+    window.history.pushState({}, '', '/?mesa=4')
+    const usuario = userEvent.setup()
+    renderApp()
+
+    await armarPedido(usuario)
+    await usuario.click(screen.getByRole('button', { name: 'Confirmar pedido' }))
+    await screen.findByText('Pedido #1')
+    expect(screen.getByText('pendiente')).toBeInTheDocument()
+    await usuario.click(
+      screen.getByRole('button', { name: 'Actualizar estado' }),
+    )
+
+    expect(await screen.findByText('listo')).toBeInTheDocument()
+    expect(screen.queryByText('pendiente')).not.toBeInTheDocument()
+    expect(screen.getByText('Pedido #1')).toBeInTheDocument()
+  })
 })

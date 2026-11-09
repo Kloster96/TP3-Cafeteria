@@ -68,6 +68,33 @@ describe('Flujo de confirmación del pedido', () => {
     )
   })
 
+  it('envía el pedido sin mesaId cuando no hay mesa en la URL', async () => {
+    let cuerpoRecibido: unknown
+    server.use(
+      http.post('/api/pedidos', async ({ request }) => {
+        cuerpoRecibido = await request.json()
+        return HttpResponse.json(
+          { ...pedidoCreado, mesaId: null },
+          { status: 201 },
+        )
+      }),
+    )
+    const usuario = userEvent.setup()
+    renderApp()
+
+    await armarPedido(usuario)
+    await usuario.click(screen.getByRole('button', { name: 'Confirmar pedido' }))
+
+    await waitFor(() => expect(cuerpoRecibido).not.toBeUndefined())
+    expect(cuerpoRecibido).toEqual({
+      items: [
+        { productoId: 9, cantidad: 2 },
+        { productoId: 19, cantidad: 1 },
+      ],
+    })
+    expect(cuerpoRecibido).not.toHaveProperty('mesaId')
+  })
+
   it('muestra el pedido confirmado y vacía el carrito', async () => {
     window.history.pushState({}, '', '/?mesa=4')
     const usuario = userEvent.setup()

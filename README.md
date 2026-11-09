@@ -167,6 +167,38 @@ Levanta la API con `NODE_ENV=test` (usa `cross-env`, así funciona igual en Wind
 
 Fuera de `NODE_ENV=test`, las dos rutas responden `404`.
 
+## Cómo correr los tests
+
+Pruebas de la API, desde la raíz:
+
+```bash
+npm test
+npm run typecheck
+```
+
+Pruebas del front, desde `frontend/`. Usan MSW para simular la API, por lo que no necesitan que esté levantada:
+
+```bash
+cd frontend
+npm test
+npm run typecheck
+npm run lint
+```
+
+Pruebas E2E, desde `frontend/`. La primera vez hay que instalar el navegador:
+
+```bash
+npx playwright install chromium
+```
+
+Después alcanza con:
+
+```bash
+npm run test:e2e
+```
+
+Playwright levanta solo la API con `npm run start:test` y el front con `npm run dev`. Si ya están corriendo en los puertos 3000 y 5173, los reutiliza. Los tests viven en `frontend/e2e/`: `pedido.spec.ts` recorre el pedido completo con la API real y `mobile.spec.ts` comprueba que no haya scroll horizontal en 375 px. El comando `npm test` del front no los ejecuta.
+
 ## Pruebas y TDD
 
 Los tests unitarios prueban los modelos y servicios de forma aislada. Los tests de integración usan Supertest sobre la aplicación de Express sin levantar un puerto.

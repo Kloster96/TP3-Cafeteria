@@ -154,6 +154,16 @@ Todas las respuestas de error tienen el mismo formato, y el front muestra el men
 
 Una mesa o un producto inexistente nunca responde 500. Los errores se procesan en un middleware centralizado (`src/middlewares/errorHandler.ts`).
 
+## Contrato que usa el front
+
+El front usa tres endpoints, descritos en "Endpoints" y "Manejo de errores":
+
+- `GET /productos` para armar el menú.
+- `POST /pedidos` para confirmar el pedido, con `mesaId` solo cuando hay mesa.
+- `GET /pedidos/:id` para consultar el estado de un pedido ya confirmado.
+
+Todas las respuestas se validan con esquemas de Zod en `frontend/src/api/schemas.ts`, y los tipos del front salen de esos esquemas. El único módulo que hace llamadas HTTP es `frontend/src/api/client.ts`; los componentes nunca llaman a `fetch`. Si la API responde con un error, el cliente lanza un `ApiError` con el mensaje del campo `error`. Si la API no responde o devuelve algo que no cumple el contrato, el mensaje es "No se pudo conectar con la cafetería" o "Respuesta inválida de la API".
+
 ## Modo test para los E2E
 
 ```bash
